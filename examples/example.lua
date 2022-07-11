@@ -57,6 +57,12 @@ print("r = ", r)
 r = oct.feval("rand", 1, 1, 3) -- 1x3 result (row vector)
 print("r = ", inspect(r))
 
+-- feval can also take strings as arguments and return them as results. The
+-- same is true for eval, set, and get. This is there to accommodate cases in
+-- which an Octave function may take or return string values, e.g.:
+print("seed = ", oct.feval("rand", 1, "seed"))
+print("eig = \n" .. oct.eval("disp(eig([1,2;3,4]))"))
+
 -- Octave code can call back into Lua by means of the `lua_call` builtin.
 -- Again, all arguments and results must be numeric (scalars, vectors,
 -- matrices). Lua functions may return multuple results. One quirk here is
