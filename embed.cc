@@ -69,11 +69,32 @@ static bool oct_init(lua_State *L)
 
 static bool octave_to_lua(lua_State *L, const octave_value& v)
 {
-  // this should catch all (complex and real) scalars and matrix values
-  if (!(v.is_defined() && v.ndims() == 2 && v.is_double_type()))
+  // this should catch all plain old Octave data including scalars, vectors,
+  // matrices and strings
+  if (!(v.is_defined() && v.ndims() == 2))
     return false;
-  // XXXTODO: since Lua has no built-in complex number type, we don't handle
-  // complex Octave matrices right now.
+  if (v.is_string()) {
+      charMatrix s = v.char_matrix_value();
+      int n = s.rows();
+      if (n==0) {
+	// empty string
+	lua_pushstring(L, "");
+	return true;
+      } else if (n==1) {
+	std::string tmp = s.row_as_string(0);
+	lua_pushstring(L, tmp.c_str());
+	return true;
+      } else {
+	// this character matrix has more than one row, we don't support that
+	// right now, just simple string values
+	return false;
+      }
+  }
+  // being done with strings, we want a numeric scalar or matrix here
+  if (!v.is_double_type())
+    return false;
+  // XXXTODO: Since Lua has no standard way to represent complex numbers, we
+  // skip complex Octave matrices right now.
   if (v.iscomplex())
     return false;
   // convert to a Lua value (number or table), push on top of the Lua stack
@@ -126,6 +147,11 @@ static bool lua_to_octave(lua_State *L, octave_value& v)
   if (lua_isnumber(L, -1)) {
     double x = lua_tonumber(L, -1);
     v = octave_value(x);
+    return true;
+  } else if (lua_isstring(L, -1)) {
+    const char *s = lua_tostring(L, -1);
+    charMatrix m(s);
+    v = octave_value(m);
     return true;
   } else if (lua_istable(L, -1)) {
     int k = lua_rawlen(L, -1), l = -1;
