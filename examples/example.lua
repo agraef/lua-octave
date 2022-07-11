@@ -65,11 +65,11 @@ print("eig = \n" .. oct.eval("disp(eig([1,2;3,4]))"))
 
 -- Octave code can call back into Lua by means of the `lua_call` builtin.
 -- Again, all arguments and results must be numeric (scalars, vectors,
--- matrices). Lua functions may return multuple results. One quirk here is
--- that the function name in the 1st argument *must* be a Lua value in the
--- global environment, i.e., `lua_call` will *not* go out and find functions
--- in other modules such as `math.exp`. Thus, if you want to use such
--- functions, you'll have to bind them in the global environment, e.g.:
+-- matrices) or strings. Lua functions may return multiple results. One quirk
+-- here is that the function name in the 1st argument *must* be a Lua value in
+-- the global environment, i.e., `lua_call` will *not* go out and find
+-- functions in other modules such as `math.exp`. Thus, if you want to use
+-- such functions, you'll have to bind them in the global environment, e.g.:
 
 exp = math.exp
 e = oct.eval("lua_call('exp', 1)")
