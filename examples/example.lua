@@ -36,8 +36,8 @@ print("c = ", inspect(c))
 -- Functions can also be invoked directly by their name, specifying parameters
 -- as extra arguments to `feval` which is invoked as `feval(name,nret,...)`.
 -- Note that in this case, the requested number of return values *must* be
--- given as the second argument, before the remaining numeric arguments to be
--- passed to the Octave function.
+-- given as the second argument, before the remaining arguments to be passed
+-- to the Octave function.
 
 -- On the Lua side, numeric values can be either numbers, or tables (of
 -- tables) of numbers, such as 99 (scalar), {15,9} (vector), or {{1,2},{3,4}}
@@ -87,6 +87,9 @@ print("A = ", oct.get("A"))
  -- 2nd arg may also be a vector or matrix
 oct.set("A", {1,2,3})
 print("A = ", inspect(oct.get("A")))
+-- string values are also supported
+oct.set("A", "abc")
+print("A = ", oct.get("A"))
 
 -- Application example: multidimensional scaling using the SMACOF algorithm.
 
