@@ -1,13 +1,21 @@
 
--- need this to print table values (available from LuaRocks)
+-- need this to print table values (available from LuaRocks, source at
+-- https://github.com/kikito/inspect.lua)
 inspect = require("inspect")
 
 -- load the Octave interface
 oct = require("octave")
 
--- evaluate an Octave expression, return the result(s)
 -- NOTE: the Octave interpreter gets initialized automatically on the first
 -- call to `eval`, at which time Octave's initialization files get executed.
+
+-- Declare Octave's ans variable as global so that we can access it on the Lua
+-- side - see the get/set examples below for explanation. We do this here
+-- before doing any calculations in order to prevent a warning about ans being
+-- declared global after its first use.
+oct.eval("global ans", 0)
+
+-- evaluate an Octave expression, return the result
 a = oct.eval("6*7")
 print("a = ", a)
 
@@ -15,23 +23,45 @@ print("a = ", a)
 x = oct.eval("x = [1,2;3,4]")
 print("x = ", inspect(x))
 
--- eval without a second argument always returns the max number of results (up
--- to 256); here, eig() returns three matrix results
-b1,b2,b3 = oct.eval("eig(x)")
-print("b1 = ", inspect(b1))
-print("b2 = ", inspect(b2))
-print("b3 = ", inspect(b3))
+-- eval without a second argument always returns (at most) one result; here,
+-- eig() returns the vector of eigenvalues
+l = oct.eval("eig(x)")
+print("l = ", inspect(l))
 
--- specifying 1 return value only returns the first result (just the vector of
--- eigenvalues in this case)
-c = oct.eval("eig(x)", 1)
-print("c = ", inspect(c))
+-- Some Octave functions may return multiple values, and indeed return
+-- different results depending on how many return values are requested. You
+-- can specify the desired return count in eval's optional second argument, in
+-- which case eval will return (at most) the given number of results. Note
+-- that this value is only advisory; the actual number of return values may
+-- vary depending on the function at hand.
+
+-- E.g., when 3 return values are requested, eig() returns three matrices
+-- v,d,w instead. (v and w are the left and right eigenvectors, d ist a
+-- diagonal matrix containg the eigenvalues, please check `help eig` in Octave
+-- for details.)
+v,d,w = oct.eval("eig(x)", 3)
+print("v = ", inspect(v))
+print("d = ", inspect(d))
+print("w = ", inspect(w))
+
+-- When in doubt, you can just request a large number of return values, store
+-- them in a Lua table, and check the size of that table to determine how many
+-- results you got:
+t = {oct.eval("eig(x)", 99)}
+print("#t = ", #t)
+print("t = ", inspect(t))
 
 -- Specifying zero return values switches the interpreter to "command mode",
 -- in which special commands such as `global`, `help`, and `source` can be
 -- executed, which wouldn't work with a plain `eval`.
 
---oct.eval("help eig", 0)
+oct.eval("global lambda = eig(x)", 0)
+
+-- On the Lua side, numeric values can be either numbers, or tables (of
+-- tables) of numbers, such as 99 (scalar), {15,9} (vector), or {{1,2},{3,4}}
+-- (2x2 matrix). These will be interpreted as Octave scalars, vectors or
+-- matrices, respectively. Any such values may also be returned as evaluation
+-- results by `eval` (as well as `feval`, `get`, and `set` discussed below).
 
 -- Functions can also be invoked directly by their name, specifying parameters
 -- as extra arguments to `feval` which is invoked as `feval(name,nret,...)`.
@@ -39,14 +69,8 @@ print("c = ", inspect(c))
 -- given as the second argument, before the remaining arguments to be passed
 -- to the Octave function.
 
--- On the Lua side, numeric values can be either numbers, or tables (of
--- tables) of numbers, such as 99 (scalar), {15,9} (vector), or {{1,2},{3,4}}
--- (2x2 matrix). These will be interpreted as Octave scalars, vectors or
--- matrices, respectively. Any such values may also be returned as evaluation
--- results by `feval` or `eval`.
-
-d = oct.feval("gcd", 1, {15,27}, {20,18})
-print("d = ", inspect(d))
+g = oct.feval("gcd", 1, {15,27}, {20,18})
+print("g = ", inspect(g))
 
 -- feval can also be called with just the function name in the case of a
 -- parameterless function, e.g.:
@@ -61,7 +85,7 @@ print("r = ", inspect(r))
 -- same is true for eval, set, and get. This is there to accommodate cases in
 -- which an Octave function may take or return string values, e.g.:
 print("seed = ", oct.feval("rand", 1, "seed"))
-print("eig = \n" .. oct.eval("disp(eig([1,2;3,4]))"))
+print("eig = \n" .. oct.eval("disp(eig(x))"))
 
 -- Octave code can call back into Lua by means of the `lua_call` builtin.
 -- Again, all arguments and results must be numeric (scalars, vectors,
@@ -78,23 +102,25 @@ print("e = ", e) -- prints e = 2.71828...
 -- Global variables can be set and retrieved with either `eval` or `set` and
 -- `get`. However, in order to exchange global variables between Lua and
 -- Octave, they *must* be declared global, e.g.:
-oct.eval("global A = [1,2;3,4]", 0) -- must use command mode here
-print("A = ", inspect(oct.get("A")))
+oct.eval("global ans", 0) -- this must be executed in command mode
+-- this executes eig() in command mode in which the result is printed and
+-- stored in ans; we can then access that value on the Lua side with get()
+oct.eval("eig(x)", 0)
+print("ans = ", inspect(oct.get("ans")))
 -- `set` uses the same kind of numeric (scalar, vector, or matrix) values as
 -- `feval` in its second argument.
-oct.set("A", 99)
-print("A = ", oct.get("A"))
- -- 2nd arg may also be a vector or matrix
-oct.set("A", {1,2,3})
-print("A = ", inspect(oct.get("A")))
+oct.set("ans", {1,2,3})
+print("ans = ", inspect(oct.get("ans")))
+-- note that this really changes the value of ans on the Octave side:
+oct.eval("ans", 0)
 -- string values are also supported
-oct.set("A", "abc")
-print("A = ", oct.get("A"))
+oct.set("ans", "abc")
+print("ans = ", oct.get("ans"))
 
 -- Application example: multidimensional scaling using the SMACOF algorithm.
 
 -- Execute a `source` command to load the scale.m script file which implements
--- the algorithm.
+-- the algorithm. This must be executed in command mode.
 oct.eval("source scale.m", 0)
 
 -- Set the input metric for the algorithm.
@@ -105,7 +131,7 @@ oct.set("M", M)
 -- Calculate the multidimensional scaling (an embedding in Euclidean space)
 -- along with the error ("stress") of the embedding using the mds function
 -- from mds.m (the second argument indicates the requested dimension).
-V,s = oct.eval("mds(M, 3)")
+V,s = oct.eval("mds(M, 3)", 2)
 
 -- Print results.
 print("\nMDS example:\n")

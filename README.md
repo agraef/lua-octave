@@ -10,7 +10,7 @@ Obviously, you'll need Lua (Lua 5.2 or later should be fine, 5.4 has been tested
 
 ## Installation
 
-This version comes with a rockspec which lets you conveniently install the module using [luarocks](https://luarocks.org/).
+This version comes with a rockspec which lets you conveniently install the module using [luarocks][].
 
 To build and install: `sudo luarocks make`
 
@@ -22,11 +22,16 @@ To build and install: `make && sudo make install`
 
 To uninstall: `sudo make uninstall`
 
+**NB:** In order to run the examples, you'll also need [inspect][] which can be installed with luarocks (`sudo luarocks install inspect`).
+
+[luarocks]: https://luarocks.org/
+[inspect]: https://github.com/kikito/inspect.lua
+
 ## Synopsis
 
 To load this module: `oct = require("octave")`
 
-`oct.eval(s)`, `oct.eval(s, n)`: Evaluates the expression `s` (a string) in the Octave interpreter, and returns results. An instance of the interpreter will be created if none is running. The desired number of results can optionally be specified as a second argument. Results must be strings or numeric (i.e., scalars, vectors, and matrices). The latter are represented as numbers and tables on the Lua side, see below for details and examples.
+`oct.eval(s)`, `oct.eval(s, n)`: Evaluates the expression `s` (a string) in the Octave interpreter, and returns the result. An instance of the interpreter will be created if none is running. The desired number of results can optionally be specified as a second argument. Results must be strings or numeric (i.e., scalars, vectors, and matrices). The latter are represented as numbers and tables on the Lua side, see below for details and examples.
 
 In the Octave interpreter, you can call back to Lua using the Octave `lua_call` builtin which is invoked as `lua_call(f, args, ...)`, where `f` is the name of a Lua function (which must be global), and `args` are the arguments the function is to be invoked with.
 
@@ -36,25 +41,34 @@ In the Octave interpreter, you can call back to Lua using the Octave `lua_call` 
 
 ## Notes
 
-By default, `eval` tries to grab as many results as possible and returns them all as a tuple. For instance, the Octave `eig` function will return three matrix results which can be bound to variables in Lua as follows:
+By default, `eval` returns (at most) one result. For instance, the Octave `eig` function will return the vector of eigenvalues:
 
 ~~~lua
 oct.eval("x = [1,2;3,4]")
-v,d,w = oct.eval("eig(x)")
+l = oct.eval("eig(x)")
 ~~~
 
-Or you might collect all results in a Lua table like so:
+The number of results to be returned can also be specified as an optional second argument. In fact, some Octave functions may return different results depending on the given return count. E.g.,  if you request three results from `eig`, you'll get a tuple with three matrices which can be bound to variables in Lua as follows:
 
 ~~~lua
-t = {oct.eval("eig(x)")}
-#t -- number of results actually returned by eval
+v,d,w = oct.eval("eig(x)", 3)
 ~~~
 
-The number of results to be returned can also be specified as an optional second argument. Some Octave functions may return different results depending on the given return count; e.g., `oct.eval("eig(x)", 1)` just returns the vector of eigenvalues. Moreover, specifying a zero return count switches the interpreter to "command mode", in which special Octave commands such as `global`, `help`, and `source` become available.
+You might also collect all results in a Lua table like this:
+
+~~~lua
+t = {oct.eval("eig(x)", 3)}
+#t -- number of results actually returned by eval
+inspect(t) -- print the table
+~~~
+
+(As an aside, we strongly recommend that you install [inspect][] which makes it easy to get a human-readable representation of tables like these. You'll really need this when dealing with Octave's matrix results. It's used in the supplied examples as well.)
+
+Finally, specifying a zero return count switches the interpreter to "command mode", in which special Octave commands such as `global`, `help`, and `source` become available. (See the discussion of `get` and `set` below for an example.)
 
 On the Lua side, numeric values can be either numbers, or tables (of tables) of numbers, such as `99` (a scalar), `{15,9}` (a vector), or `{{1,2},{3,4}}` (a 2x2 matrix). These will be marshaled to Octave scalars, row vectors, and matrices, respectively, when passed to Octave using `feval` or `set`. Any such values may also be returned as results by `eval`, `feval`, `set`, and `get`.
 
-For convenience, all vectors are represented as tables of numbers on the Lua side, so Octave column vectors will effectively become row vectors when returned to Lua. But you can easily convert such a row vector back to a column vector on the Octave side by employing Octave's `transpose` function, which provides a means to pass proper column vectors as parameters to Octave functions if needed.
+For convenience, all vectors are represented as tables of numbers on the Lua side, so Octave column vectors will effectively become row vectors when returned to Lua. But you can easily convert such a row vector back to a column vector on the Octave side by employing Octave's `'` operator, which provides a quick means to pass proper column vectors as parameters to Octave functions if needed.
 
 The interface also has limited support for passing strings between Lua and Octave, as these are sometimes used as Octave function arguments and results. That is, both `feval` and `set` may take string arguments, and all of the interface functions may return string values as results. Note that this only covers simple string values (no string tables or other similar aggregates). For instance:
 
@@ -69,7 +83,7 @@ At present, these are the only types of Octave values which are supported by the
 In order to exchange global variable values between Lua and Octave via `set` and `get`, you have to make sure that the variable names are also declared `global` (using the corresponding Octave command). If you don't do this, variables created on the Lua side won't be visible in Octave, and vice versa. E.g., you can access the value of Octave's built-in `ans` variable like so:
 
 ~~~lua
-oct.eval("global ans", 0)
+oct.eval("global ans", 0) -- this must be executed in command mode
 oct.eval("eig(x)", 0) -- Octave prints the result and stores it in ans
 oct.get("ans") -- returns the computed vector as a Lua table
 ~~~
