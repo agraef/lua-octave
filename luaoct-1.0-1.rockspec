@@ -1,7 +1,7 @@
 package = "luaoct"
 version = "1.0-1"
 source = {
-   url = "..." -- We don't have one yet
+   url = "https://github.com/agraef/lua-octave"
 }
 description = {
    summary = "Embeds an Octave interpreter in your Lua programs.",
@@ -11,7 +11,7 @@ description = {
       Octave interpreter, set and retrieve variable values in the interpreter,
       and invoke Lua callbacks from Octave.
    ]],
-   homepage = "http://...", -- We don't have one yet
+   homepage = "https://github.com/agraef/lua-octave",
    license = "BSD-3"
 }
 dependencies = {
