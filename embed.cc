@@ -248,7 +248,7 @@ int octave_eval(lua_State *L)
   std::string cmd = s;
   if (cmd.empty()) return 0;
   // optional second argument: max number of results to return
-  int nres = lua_gettop(L)>1 ? luaL_checkinteger(L, 2) : 256;
+  int nres = lua_gettop(L)>1 ? luaL_checkinteger(L, 2) : 1;
 
   try {
     octave_value_list out = interpreter.eval (cmd, nres);
@@ -277,7 +277,7 @@ int octave_eval(lua_State *L)
 int octave_feval(lua_State *L)
 {
   const char *s = luaL_checkstring(L, 1);
-  int nres = lua_gettop(L)>1 ? luaL_checkinteger(L, 2) : 256;
+  int nres = lua_gettop(L)>1 ? luaL_checkinteger(L, 2) : 1;
   if (!s)
     return oct_error(L, "feval: expected string argument");
   if (!oct_init(L))
