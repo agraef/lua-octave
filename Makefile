@@ -46,7 +46,7 @@ OCT_FLAGS=-L$(shell $(mkoctfile) -p OCTLIBDIR) $(shell $(mkoctfile) -p LIBOCTINT
 all: octave.so
 octave.so: embed.cc embed.h
 	rm -f $@
-	$(mkoctfile) -v $(octversionflag) -o $@ $< $(shell pkg-config --cflags --libs lua) -llua $(RLD_FLAG) $(OCT_FLAGS) -Wl,--no-as-needed
+	$(mkoctfile) -v $(octversionflag) -o $@ $< $(shell pkg-config --cflags --libs lua) $(RLD_FLAG) $(OCT_FLAGS) -Wl,--no-as-needed
 	if test -f $@.oct; then mv $@.oct $@; fi
 
 clean:
