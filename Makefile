@@ -2,6 +2,12 @@
 # This is a GNU Makefile. This should work on most Un*x systems, Windows
 # undoubtedly needs some work.
 
+# IMPORTANT: On Debian/Ubuntu, the octave library path seems to be missing
+# from the ld.so config, so if the octave module fails to load, you will have
+# to set LD_LIBRARY_PATH explicitly, e.g.:
+
+# export LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu/octave/6.4.0
+
 # Package name and version number:
 dist = lua-octave-$(version)
 version = 1.0
