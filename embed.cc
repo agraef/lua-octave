@@ -4,6 +4,7 @@
 #include <octave/octave.h>
 #include <octave/parse.h>
 #include <octave/interpreter.h>
+#include <dlfcn.h>
 
 #include "embed.h"
 
@@ -17,12 +18,46 @@ static void install_builtins();
 
 static lua_State *_L;
 
+#define xstr(a) str(a)
+#define str(a) #a
+
+#ifndef OCTAVE_LIBDIR
+#define octave_libdir "/usr/lib/octave/7.2.0"
+#else
+#define octave_libdir xstr(OCTAVE_LIBDIR)
+#endif
+
+#ifndef DLL_EXT
+#define dll_ext ".so"
+#else
+#define dll_ext xstr(DLL_EXT)
+#endif
+
+static const char *octlibdir = octave_libdir;
+static const char *dllext = dll_ext;
+
 static bool oct_init(lua_State *L)
 {
   if (first_init) return interpreter_status == 0;
   first_init = true;
   install_builtins();
   _L = L;
+  // Not sure why this is necessary in the Lua (and not in the Pure) module,
+  // but we need to preload at least liboctinterp.so here, otherwise some of
+  // Octave's startup files may fail in binary modules (e.g., gnuplot) which
+  // need access to these libraries.
+  char buf[256];
+  memset(buf, 0, sizeof(buf));
+#if 0 // liboctave.so doesn't seem to be needed, for now
+  snprintf(buf, sizeof(buf), "%s/liboctave%s", octlibdir, dllext);
+  if (!dlopen(buf, RTLD_NOW|RTLD_GLOBAL))
+    std::cerr << "Couldn't load " << buf << std::endl
+	      << "Some Octave startup files may fail to load." << std::endl;
+#endif
+  snprintf(buf, sizeof(buf), "%s/liboctinterp%s", octlibdir, dllext);
+  if (!dlopen(buf, RTLD_NOW|RTLD_GLOBAL))
+    std::cerr << "Couldn't load " << buf << std::endl
+	      << "Some Octave startup files may fail to load." << std::endl;
   try {
     // Inhibit reading history file by calling
     //

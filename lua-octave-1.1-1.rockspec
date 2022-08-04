@@ -1,8 +1,8 @@
 package = "lua-octave"
-version = "1.0-1"
+version = "1.1-1"
 source = {
    url = "git://github.com/agraef/lua-octave",
-   tag = "1.0"
+   tag = "1.1"
 }
 description = {
    summary = "Embeds an Octave interpreter in your Lua programs.",
@@ -16,7 +16,7 @@ description = {
    license = "BSD-3"
 }
 dependencies = {
-   "lua >= 5.1"
+   "lua >= 5.2"
 }
 build = {
    type = "make",

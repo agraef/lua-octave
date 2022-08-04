@@ -10,7 +10,7 @@
 
 # Package name and version number:
 dist = lua-octave-$(version)
-version = 1.0
+version = 1.1
 rev = 1
 
 # This has been set up so that it will work with luarocks or without it.
@@ -42,9 +42,26 @@ mkoctfile = mkoctfile
 octversion = $(shell $(mkoctfile) --version 2>&1 | sed -e 's/^mkoctfile, version \([0-9.]*\).*/\1/' | sed -e 's/\([0-9]*\)[.]\([0-9]*\).*/\1 \2/')
 octversionflag = -DOCTAVE_MAJOR=$(word 1,$(octversion)) -DOCTAVE_MINOR=$(word 2,$(octversion))
 
+# We also need the location of the Octave libraries, and the shared library
+# extension (system-dependent).
+octlibdir = -DOCTAVE_LIBDIR="$(shell $(mkoctfile) -p OCTLIBDIR)"
+
+# Make an educated guess. If this fails, set dllext manually
+uname = $(shell uname -s)
+ifeq ($(uname),Linux)
+dllext = .so
+# Mac OSX
+else ifeq ($(uname),Darwin)
+dllext = .dylib
+else ifneq ($(findstring MINGW, $(uname)),)
+# MINGW/MSYS on Windows
+dllext = .dll
+endif
+dllextflag = -DDLL_EXT="$(dllext)"
+
 # Add the -rpath flag so that the dynamic linker finds liboctave.so etc. when
 # Pure loads the module. NOTE: This doesn't seem to be needed any more.
-RLD_FLAG=$(shell $(mkoctfile) -p RLD_FLAG)
+#RLD_FLAG=$(shell $(mkoctfile) -p RLD_FLAG)
 
 # Octave 5.1+ doesn't automatically include these linker options any more.
 OCT_FLAGS=-L$(shell $(mkoctfile) -p OCTLIBDIR) $(shell $(mkoctfile) -p LIBOCTINTERP) $(shell $(mkoctfile) -p LIBOCTAVE)
@@ -52,7 +69,7 @@ OCT_FLAGS=-L$(shell $(mkoctfile) -p OCTLIBDIR) $(shell $(mkoctfile) -p LIBOCTINT
 all: octave.so
 octave.so: embed.cc embed.h
 	rm -f $@
-	$(mkoctfile) -v $(octversionflag) -o $@ $< $(shell pkg-config --cflags --libs lua) $(RLD_FLAG) $(OCT_FLAGS) -Wl,--no-as-needed
+	$(mkoctfile) -v $(octversionflag) $(octlibdir) $(dllextflag) -o $@ $< $(shell pkg-config --cflags --libs lua) $(RLD_FLAG) $(OCT_FLAGS) -Wl,--no-as-needed
 	if test -f $@.oct; then mv $@.oct $@; fi
 
 clean:
